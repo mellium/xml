@@ -14,7 +14,7 @@ import (
 )
 
 // Use a Scanner to split a byte stream on possible XML tokens.
-func ExampleScanner() {
+func ExampleSplit() {
 	scanner := bufio.NewScanner(strings.NewReader(`<root>
   <foo test="split me"/>
 </root>`))
