@@ -1,13 +1,12 @@
-// Copyright 2021 The Mellium Contributors.
+// Copyright 2022 The Mellium Contributors.
 // Use of this source code is governed by the BSD 2-clause
 // license that can be found in the LICENSE file.
 
 package xml_test
 
 import (
-	"bufio"
 	"encoding/xml"
-	"io"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,75 +14,62 @@ import (
 	. "mellium.im/xml"
 )
 
-const (
-	cdataStart = "<![CDATA["
-	cdataEnd   = "]]>"
-)
-
-var splitTestCases = []struct {
+var tokenizerTestCases = []struct {
 	in string
 }{
-	0: {},
-	1: {
-		in: "test<a/>",
-	},
-	2: {in: "test<a></a>"},
-	3: {in: `<![CDATA[ ..>. ]]>`},
-	4: {in: `<a test=">"></a>`},
-	5: {in: `<a test='>'></a>`},
-	6: {in: `<stream:stream xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams' xmlns:db='jabber:server:dialback' version='1.0' to='example.org' from='example.com' xml:lang='en'>
-<a/><b>inside b before c<c>inside c</c></b>
-<q>bla<![CDATA[<this>is</not><xml/>]]>bloo</q>
-<x><![CDATA[ lol</x> ]]></x>
-<z><x><![CDATA[ lol</x> ]]></x></z>
-<a a='![CDATA['/>
-<x a='/>'>This is going to be fun.</x>
-<z><x a='/>'>This is going to be fun.</x></z>
-<d></d><e><![CDATA[what]>]]]]></e></stream:stream>`},
+	// TODO: syntax error with target/inst? I can't remember what character caused
+	// it.
+	0: {in: `<?inst target?><?inst tar get ?><?inst>target?>`},
+	// TODO: <!--test---> syntax error?
+	1: {in: `<!--test--><!-- test --><!-- test- -->`},
+	2: {in: `<!dir>, <! test >`},
+	3: {in: `<test></test><foo bar="baz"></foo><foo2 bar="baz" bar="boz"></foo2>`},
+	4: {in: `<?xml version="1.0" encoding="UTF-8"?>
+<?Target Instruction?>
+<root>
+</root>
+`},
+	5: {in: `<foo/><bar
+	/>`},
+	6: {in: `<baz xmlns="g" g:test="yes"><bar xmlns:g="me"><foo xmlns:h="hi" h:attr="boo" g:attr="my"/></bar></baz>`},
+	7: {in: `<a:href xmlns:a="test"></a:href>`},
+	8: {in: `<foo xmlns="foo"><bar a="b"/></foo>`},
+	9: {in: `
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<body xmlns:foo="ns1" xmlns="ns2" xmlns:tag="ns3" ` +
+		"\r\n\t" + `  >
+  <hello lang="en">World &lt;&gt;&apos;&quot; &#x767d;&#40300;翔</hello>
+  <query>&何; &is-it;</query>
+  <goodbye />
+  <outer foo:attr="value" xmlns:tag="ns4">
+    <inner/>
+  </outer>
+  <tag:name>
+    <![CDATA[Some text here.]]>
+  </tag:name>
+</body><!-- missing final newline -->`},
 }
 
-func TestSplit(t *testing.T) {
-	for i, tc := range splitTestCases {
+func TestTokenize(t *testing.T) {
+	for i, tc := range tokenizerTestCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			d := xml.NewDecoder(strings.NewReader(tc.in))
-			scan := bufio.NewScanner(strings.NewReader(tc.in))
-			scan.Split(Split)
+			td := NewTokenizer(strings.NewReader(tc.in))
 
-			for scan.Scan() {
-				tokText := scan.Text()
+			for {
+				ttok, terr := td.Token()
 				tok, err := d.Token()
-				if err != nil {
-					t.Fatalf("error decoding token %q: %v", tokText, err)
+				if err != terr {
+					t.Fatalf("mismatched error decoding: want=%v, got=%v", err, terr)
 				}
-				t.Logf("Split tok: %q, %T(%[2]v)", string(tokText), tok)
-				switch typedTok := tok.(type) {
-				case xml.Comment:
-					if string(typedTok) != tokText {
-						t.Fatalf("wrong comment: want=%q, got=%q", typedTok, tokText)
-					}
-				case xml.CharData:
-					trimText := strings.TrimPrefix(tokText, cdataStart)
-					trimText = strings.TrimSuffix(trimText, cdataEnd)
-					if string(typedTok) != trimText {
-						t.Fatalf("wrong chardata: want=%q, got=%q", typedTok, trimText)
-					}
+				if !reflect.DeepEqual(ttok, tok) {
+					t.Fatalf("mismatched token:\nwant=%T(%+[1]v),\n got=%[2]T(%+[2]v)", tok, ttok)
 				}
-				if strings.HasSuffix(tokText, "/>") {
-					tok, err = d.Token()
-					if err != nil {
-						t.Fatalf("error decoding token %q: %v", tokText, err)
-					}
-					if _, ok := tok.(xml.EndElement); !ok {
-						t.Fatalf("expected xml.EndElement, but got %T (%[1]v)", tok)
-					}
+				if err != nil || terr != nil {
+					return
 				}
-			}
-			if err := scan.Err(); err != nil {
-				t.Fatalf("unexpected error while scanning: %v", err)
-			}
-			tok, err := d.Token()
-			if (err != io.EOF && err != nil) || tok != nil {
-				t.Fatalf("unexpected extra %T or error decoded: %[1]v, %v", tok, err)
 			}
 		})
 	}
