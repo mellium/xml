@@ -1,7 +1,8 @@
 # XML
 
-[![GoDoc](https://godoc.org/mellium.im/xml?status.svg)][docs]
-[![Chat](https://inverse.chat/badge.svg?room=users@mellium.chat)](https://mellium.chat)
+[![Issue Tracker][badge]](https://mellium.im/issue)
+[![Docs](https://pkg.go.dev/badge/mellium.im/xml)](https://pkg.go.dev/mellium.im/xml)
+[![Chat](https://img.shields.io/badge/XMPP-users@mellium.chat-orange.svg)](https://mellium.chat)
 [![License](https://img.shields.io/badge/license-FreeBSD-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
 An experimental XML library in Go.
@@ -25,6 +26,6 @@ in the work by you shall be licensed as above, without any additional terms or
 conditions.
 
 
-[docs]: https://pkg.go.dev/mellium.im/xml
+[badge]: https://img.shields.io/badge/style-mellium%2fxmpp-green.svg?longCache=true&style=popout-square&label=issues
 [CONTRIBUTING.md]: https://mellium.im/docs/CONTRIBUTING
-[LICENSE]: https://github.com/mellium/xml/blob/master/LICENSE
+[LICENSE]: https://codeberg.org/mellium/xmpp/src/branch/main/LICENSE
